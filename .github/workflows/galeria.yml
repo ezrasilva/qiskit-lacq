@@ -1,0 +1,47 @@
+name: Atualizar galeria
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "circuitos/**"
+      - "scripts/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Vários merges seguidos: só a execução mais recente importa,
+# porque ela gera a galeria inteira de novo.
+concurrency:
+  group: galeria
+  cancel-in-progress: true
+
+jobs:
+  galeria:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar Qiskit
+        run: pip install "qiskit>=2.0"
+
+      - name: Gerar GALERIA.md
+        run: python scripts/gerar_galeria.py
+
+      - name: Publicar
+        run: |
+          if git diff --quiet -- GALERIA.md; then
+            echo "Galeria sem mudanças."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add GALERIA.md
+          git commit -m "Atualiza a galeria de circuitos"
+          git pull --rebase origin main
+          git push
